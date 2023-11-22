@@ -1,6 +1,7 @@
 #ifndef COMPLEXPLANE_H
 #define COMPLEXPLANE_H
 #include <iostream>
+#include <thread>
 #include <complex>
 #include <SFML/Graphics.hpp>
 

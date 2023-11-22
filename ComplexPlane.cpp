@@ -25,13 +25,15 @@ void ComplexPlane::draw(RenderTarget& target, RenderStates states) const {
 void ComplexPlane::updateRender() {
 	
 	if (m_State == State::CALCULATING) {
+		const auto processor_count = std::thread::hardware_concurrency();
 
 		for (int i = 0; i < m_pixel_size.y; i++) {
 			for (int j = 0; j < m_pixel_size.x; j++) {
 				
 				m_vArray[j + i * m_pixel_size.x].position = { (float)j,(float)i };
 				
-				Vector2i pixel(m_vArray[j + i * m_pixel_size.x].position.x, m_vArray[j + i * m_pixel_size.x].position.y);
+				Vector2i pixel(m_vArray[j + i * m_pixel_size.x].position.x, 
+					m_vArray[j + i * m_pixel_size.x].position.y);
 				
 				Vector2f coord = mapPixelToCoords(pixel);
 				int iterations = countIterations(coord);
@@ -124,17 +126,39 @@ int ComplexPlane::countIterations(Vector2f coord) {
 }
 
 void ComplexPlane::iterationsToRGB(size_t count, Uint8& r, Uint8& g, Uint8& b) {
-
+	Uint8 baseColor = static_cast<Uint8>(255 * count / MAX_ITER);
 	if (count == MAX_ITER) {
 		r = 0;
 		g = 0;
 		b = 0;
 	}
-	else{
-		Uint8 intensity = static_cast<Uint8>(255 * count / MAX_ITER);
-		r = intensity;
-		g = intensity;
-		b = intensity;
+	if (count == MAX_ITER){
+		r = g = b = 0;
+	}
+	else if (count < MAX_ITER / 5) {
+		r = baseColor;
+		g = 0;
+		b = baseColor;
+	}
+	else if (count < 2 * MAX_ITER / 5) {
+		r = 0;
+		g = baseColor;
+		b = baseColor;
+	}
+	else if (count < 3 * MAX_ITER / 5) {
+		r = 0;
+		g = baseColor;
+		b = 0;
+	}
+	else if (count < 4 * MAX_ITER / 5) {
+		r = baseColor;
+		g = baseColor;
+		b = 0;
+	}
+	else {
+		r = baseColor;
+		g = 0;
+		b = 0;
 	}
 	
 }
@@ -144,9 +168,11 @@ Vector2f ComplexPlane::mapPixelToCoords(Vector2i mousePixel) {
 	// formula to map a value n from range [a,b] into range [c,d] is: 
 	//((n - a) / (b - a))* (d - c) + c
 
-	float x = ((static_cast<float>(mousePixel.x) - 0) / (m_pixel_size.x - 0)) * m_plane_size.x + m_plane_center.x - m_plane_size.x / 2.0;
+	float x = ((static_cast<float>(mousePixel.x) - 0) / (m_pixel_size.x - 0)) 
+									* m_plane_size.x + m_plane_center.x - m_plane_size.x / 2.0;
 
-	float y = ((static_cast<float>(mousePixel.y) - m_pixel_size.y) / (0 - m_pixel_size.y)) * m_plane_size.y + m_plane_center.y - m_plane_size.y / 2.0;
+	float y = ((static_cast<float>(mousePixel.y) - m_pixel_size.y) / (0 - m_pixel_size.y)) 
+									* m_plane_size.y + m_plane_center.y - m_plane_size.y / 2.0;
 
 	return Vector2f(x, y);
 
