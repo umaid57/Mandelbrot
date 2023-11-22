@@ -21,29 +21,42 @@ void ComplexPlane::draw(RenderTarget& target, RenderStates states) const {
 
 }
 
+void ComplexPlane::multiRender(int startX, int stopX) {
+	
+	for (int i = 0; i < m_pixel_size.y; i++) {
+		for (int j = startX; j < stopX; j++) {
+			
+			m_vArray[j + i * m_pixel_size.x].position = { (float)j,(float)i };
+
+			Vector2i pixel(m_vArray[j + i * m_pixel_size.x].position.x,
+				m_vArray[j + i * m_pixel_size.x].position.y);
+
+			Vector2f coord = mapPixelToCoords(pixel);
+			int iterations = countIterations(coord);
+
+			Uint8 r, g, b;
+			iterationsToRGB(iterations, r, g, b);
+			m_vArray[j + i * m_pixel_size.x].color = { r, g, b };
+
+		}
+	}
+}
 
 void ComplexPlane::updateRender() {
-	
+	const auto processor_count = std::thread::hardware_concurrency();
+	std::vector<std::thread> threads;
 	if (m_State == State::CALCULATING) {
-		const auto processor_count = std::thread::hardware_concurrency();
+		for (auto i = 0; i < processor_count; i++) {
+			int startX = i * (m_pixel_size.x / processor_count);
+			int stopX = (i + 1) * (m_pixel_size.x / processor_count);
 
-		for (int i = 0; i < m_pixel_size.y; i++) {
-			for (int j = 0; j < m_pixel_size.x; j++) {
-				
-				m_vArray[j + i * m_pixel_size.x].position = { (float)j,(float)i };
-				
-				Vector2i pixel(m_vArray[j + i * m_pixel_size.x].position.x, 
-					m_vArray[j + i * m_pixel_size.x].position.y);
-				
-				Vector2f coord = mapPixelToCoords(pixel);
-				int iterations = countIterations(coord);
-				
-				Uint8 r, g, b;
-				iterationsToRGB(iterations, r, g, b);
-				m_vArray[j + i * m_pixel_size.x].color = { r, g, b };
+			threads.push_back(std::thread(&ComplexPlane::multiRender, this, startX, stopX));
 
-			}
 		}
+		for (auto& thread : threads) {
+			thread.join();
+		}
+
 		m_State = State::DISPLAYING;
 	
 	}
@@ -158,7 +171,6 @@ void ComplexPlane::iterationsToRGB(size_t count, Uint8& r, Uint8& g, Uint8& b) {
 		g = 0;
 		b = 0;
 	}
-	
 }
 
 Vector2f ComplexPlane::mapPixelToCoords(Vector2i mousePixel) {
@@ -175,8 +187,3 @@ Vector2f ComplexPlane::mapPixelToCoords(Vector2i mousePixel) {
 	return Vector2f(x, y);
 
 }
-
-
-
-
-
